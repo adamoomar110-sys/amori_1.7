@@ -32,10 +32,9 @@ export const getPageImageUrl = (docId, pageNum) => {
     return `${API_BASE}/document/${docId}/image/${pageNum}`;
 };
 
-export const getPageContent = async (docId, pageNum) => {
-    // Not strictly needed if we just play audio, but good for validity
-    // Added for extensibility
-    return null;
+export const getPageText = async (docId, pageNum, translate = false, voice = "es-AR-TomasNeural") => {
+    const response = await axios.get(`${API_BASE}/document/${docId}/text/${pageNum}?translate=${translate}&voice=${voice}`);
+    return response.data.text;
 };
 
 export const getDocStatus = async (docId) => {

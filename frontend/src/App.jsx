@@ -480,6 +480,8 @@ function App() {
                                 width={isMobile ? 320 : 550}
                                 height={isMobile ? 450 : 750}
                                 layoutMode={layoutMode}
+                                isTranslated={isTranslated}
+                                voice={selectedVoice}
                             />
 
                             <button

@@ -1,25 +1,60 @@
-import React, { useCallback, forwardRef, useRef, useImperativeHandle, useEffect } from 'react';
+import React, { useCallback, forwardRef, useRef, useImperativeHandle, useEffect, useState } from 'react';
 import HTMLFlipBook from 'react-pageflip';
-import { getPageImageUrl } from '../api';
+import { getPageImageUrl, getPageText } from '../api';
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 
 const Page = forwardRef((props, ref) => {
+    const { number, image, isTranslated, docId, voice } = props;
+    const [pageText, setPageText] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        if (isTranslated && docId) {
+            setIsLoading(true);
+            getPageText(docId, number, true, voice)
+                .then(text => {
+                    setPageText(text);
+                    setIsLoading(false);
+                })
+                .catch(err => {
+                    console.error("Error fetching page text:", err);
+                    setPageText("Error al cargar la traducción.");
+                    setIsLoading(false);
+                });
+        }
+    }, [isTranslated, docId, number, voice]);
+
     return (
-        <div className="page-content bg-white h-full w-full shadow-md overflow-hidden relative" ref={ref}>
+        <div className="page-content bg-[#fdfbf7] h-full w-full shadow-md overflow-hidden relative" ref={ref}>
             <div className="absolute inset-0 bg-gradient-to-r from-gray-200/20 to-transparent pointer-events-none z-10 w-8"></div>
 
-            <div className="h-full w-full flex items-center justify-center p-4">
-                <img
-                    src={props.image}
-                    alt={`Page ${props.number}`}
-                    className="max-h-full max-w-full object-contain shadow-sm"
-                    loading="lazy"
-                />
+            <div className="h-full w-full flex items-center justify-center p-4 sm:p-8">
+                {isTranslated ? (
+                    <div className="w-full h-full flex flex-col items-start justify-start p-6 text-gray-800 font-serif overflow-y-auto custom-scrollbar">
+                        {isLoading ? (
+                            <div className="flex flex-col items-center justify-center w-full h-full gap-3 opacity-50">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                                <span className="text-sm italic">Traduciendo página...</span>
+                            </div>
+                        ) : (
+                            <p className="text-lg leading-relaxed first-letter:text-3xl first-letter:font-bold whitespace-pre-wrap text-left w-full">
+                                {pageText}
+                            </p>
+                        )}
+                    </div>
+                ) : (
+                    <img
+                        src={image}
+                        alt={`Page ${number}`}
+                        className="max-h-full max-w-full object-contain shadow-sm"
+                        loading="lazy"
+                    />
+                )}
             </div>
 
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-xs text-gray-500 font-serif">
-                {props.number}
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-xs text-gray-400 font-serif">
+                {number}
             </div>
 
             {/* Binding shadow/crease */}
@@ -30,7 +65,7 @@ const Page = forwardRef((props, ref) => {
 
 
 
-const FlipBook = forwardRef(({ docId, totalPages, onPageChange, width = 450, height = 650, layoutMode = 'double' }, ref) => {
+const FlipBook = forwardRef(({ docId, totalPages, onPageChange, width = 450, height = 650, layoutMode = 'double', isTranslated = false, voice = "es-AR-TomasNeural" }, ref) => {
     const bookRef = useRef();
 
     useImperativeHandle(ref, () => ({
@@ -107,6 +142,9 @@ const FlipBook = forwardRef(({ docId, totalPages, onPageChange, width = 450, hei
                                             key={index}
                                             number={index + 1}
                                             image={getPageImageUrl(docId, index + 1)}
+                                            isTranslated={isTranslated}
+                                            docId={docId}
+                                            voice={voice}
                                         />
                                     ))}
                                 </HTMLFlipBook>
@@ -118,5 +156,7 @@ const FlipBook = forwardRef(({ docId, totalPages, onPageChange, width = 450, hei
         </div>
     );
 });
+
+
 
 export default FlipBook;

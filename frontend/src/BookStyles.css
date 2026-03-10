@@ -288,3 +288,33 @@
     border-left: none;
     height: fit-content;
 }
+
+/* Custom scrollbar for translated text */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.page-content p {
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+    color: #2c3e50;
+}
+
+@media (max-width: 640px) {
+    .page-content p {
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+}

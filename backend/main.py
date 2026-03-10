@@ -328,11 +328,35 @@ async def get_page_image(doc_id: str, page_num: int):
     file_path = documents[doc_id]["path"]
     image_bytes = pdf_processor.get_page_image(file_path, page_num)
     
-    
     if not image_bytes:
         raise HTTPException(status_code=404, detail="Page not found")
         
     return Response(content=image_bytes, media_type="image/png")
+
+@app.get("/document/{doc_id}/text/{page_num}")
+async def get_page_text(doc_id: str, page_num: int, translate: bool = False, voice: str = "es-AR-TomasNeural"):
+    if doc_id not in documents:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    pages = documents[doc_id]["pages"]
+    if page_num < 1 or page_num > len(pages):
+        raise HTTPException(status_code=404, detail="Page not found")
+        
+    page_data = pages[page_num - 1]
+    text = page_data["text"]
+    
+    if translate and text.strip():
+        try:
+            target_lang = voice.split('-')[0]
+            detected_lang = detect(text)
+            
+            if detected_lang != target_lang:
+                translator = GoogleTranslator(source='auto', target=target_lang)
+                text = translator.translate(text)
+        except Exception as e:
+            print(f"Text translation error: {e}")
+            
+    return {"text": text}
 
 @app.post("/document/{doc_id}/summary")
 async def get_document_summary(doc_id: str):
