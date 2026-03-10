@@ -5,8 +5,10 @@ import './BookStyles.css';
 
 import { themes } from './themeConfig';
 import FlipBook from './components/FlipBook';
+import SplashScreen from './components/SplashScreen';
 
 function App() {
+    const [showSplash, setShowSplash] = useState(true);
     const [docId, setDocId] = useState(null);
 
     // Initialize theme
@@ -230,6 +232,10 @@ function App() {
 
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
+
+    if (showSplash) {
+        return <SplashScreen onComplete={() => setShowSplash(false)} />;
+    }
 
     return (
         // Added flex and flex-col to ensure footer stays at bottom

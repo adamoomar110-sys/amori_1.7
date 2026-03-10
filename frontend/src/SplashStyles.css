@@ -1,0 +1,253 @@
+.splash-container {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f1a 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    overflow: hidden;
+    color: white;
+    font-family: 'Georgia', serif;
+}
+
+.bookshelf {
+    display: flex;
+    gap: 30px;
+    perspective: 1500px;
+    margin-bottom: 50px;
+}
+
+.book-wrapper {
+    position: relative;
+    width: 60px;
+    height: 200px;
+    transform-style: preserve-3d;
+    transform: rotateY(-30deg);
+    animation: openBook 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    opacity: 0;
+}
+
+/* Individual Book Delays */
+.book-wrapper:nth-child(1) {
+    animation-delay: 0.5s;
+}
+
+.book-wrapper:nth-child(2) {
+    animation-delay: 1.2s;
+}
+
+.book-wrapper:nth-child(3) {
+    animation-delay: 1.9s;
+}
+
+.book-wrapper:nth-child(4) {
+    animation-delay: 2.6s;
+}
+
+.book-wrapper:nth-child(5) {
+    animation-delay: 3.3s;
+}
+
+/* The Book Structure */
+.book-spine {
+    position: absolute;
+    width: 30px;
+    height: 100%;
+    background: linear-gradient(to right, #4a154b, #2a082b);
+    transform: rotateY(-90deg) translateZ(15px);
+    transform-origin: left;
+    border-radius: 4px 0 0 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 2px 0 5px rgba(255, 255, 255, 0.2);
+}
+
+.book-cover {
+    position: absolute;
+    width: 140px;
+    height: 100%;
+    background: linear-gradient(135deg, #6b21a8, #4c1d95);
+    transform-origin: left;
+    transform: translateZ(15px);
+    border-radius: 0 8px 8px 0;
+    box-shadow: 5px 5px 20px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-left: none;
+}
+
+.book-cover::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    bottom: 5px;
+    right: 5px;
+    left: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0 4px 4px 0;
+}
+
+.book-pages {
+    position: absolute;
+    width: 135px;
+    height: 96%;
+    top: 2%;
+    background: linear-gradient(to right, #f8f9fa, #e9ecef);
+    transform-origin: left;
+    transform: translateZ(-10px);
+    border-radius: 0 4px 4px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset -5px 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* The Glowing Letter inside the pages */
+.book-letter {
+    font-size: 5rem;
+    font-weight: bold;
+    color: transparent;
+    background: linear-gradient(45deg, #8b5cf6, #d946ef);
+    -webkit-background-clip: text;
+    background-clip: text;
+    opacity: 0;
+    transform: scale(0.5);
+    animation: glowLetter 1s ease-out forwards;
+    text-shadow: 0 0 20px rgba(217, 70, 239, 0.5);
+}
+
+/* Delay letters to appear after the book opens */
+.book-wrapper:nth-child(1) .book-letter {
+    animation-delay: 1.0s;
+}
+
+.book-wrapper:nth-child(2) .book-letter {
+    animation-delay: 1.7s;
+}
+
+.book-wrapper:nth-child(3) .book-letter {
+    animation-delay: 2.4s;
+}
+
+.book-wrapper:nth-child(4) .book-letter {
+    animation-delay: 3.1s;
+}
+
+.book-wrapper:nth-child(5) .book-letter {
+    animation-delay: 3.8s;
+}
+
+/* Global Animations */
+@keyframes openBook {
+    0% {
+        opacity: 0;
+        transform: rotateY(-80deg) translateZ(-100px) rotateX(10deg);
+    }
+
+    30% {
+        opacity: 1;
+        transform: rotateY(-30deg) translateZ(0) rotateX(0deg);
+    }
+
+    100% {
+        opacity: 1;
+        transform: rotateY(0deg) translateZ(0) rotateX(0deg);
+        /* Widening the container so we can see inside */
+        width: 150px;
+    }
+}
+
+/* We animate the cover to swing open */
+
+@keyframes swingCover {
+    0% {
+        transform: translateZ(15px) rotateY(0deg);
+    }
+
+    100% {
+        transform: translateZ(15px) rotateY(-140deg);
+        box-shadow: -5px 5px 20px rgba(0, 0, 0, 0.5);
+    }
+}
+
+.book-wrapper:nth-child(1) .book-cover {
+    animation: swingCover 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation-delay: 0.8s;
+}
+
+.book-wrapper:nth-child(2) .book-cover {
+    animation: swingCover 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation-delay: 1.5s;
+}
+
+.book-wrapper:nth-child(3) .book-cover {
+    animation: swingCover 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation-delay: 2.2s;
+}
+
+.book-wrapper:nth-child(4) .book-cover {
+    animation: swingCover 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation-delay: 2.9s;
+}
+
+.book-wrapper:nth-child(5) .book-cover {
+    animation: swingCover 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation-delay: 3.6s;
+}
+
+@keyframes glowLetter {
+    0% {
+        opacity: 0;
+        transform: scale(0.5) translateZ(5px);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.1) translateZ(10px);
+        text-shadow: 0 0 30px rgba(217, 70, 239, 0.8);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1) translateZ(5px);
+        text-shadow: 0 0 15px rgba(217, 70, 239, 0.5);
+    }
+}
+
+.welcome-text {
+    margin-top: 40px;
+    font-size: 1.5rem;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    opacity: 0;
+    color: #a78bfa;
+    animation: fadeInText 1.5s ease-in forwards;
+    animation-delay: 4.5s;
+    /* Appears after all books are open */
+}
+
+@keyframes fadeInText {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-out-splash {
+    animation: fadeOutSplash 1s ease-in-out forwards;
+}
+
+@keyframes fadeOutSplash {
+    to {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+    }
+}
