@@ -471,7 +471,7 @@ function App() {
                         </div>
 
                         {/* CENTER COLUMN: THE BOOK */}
-                        <div className={`book-container flex justify-center items-center overflow-hidden relative rounded-3xl backdrop-blur-md bg-black/5 shadow-2xl border border-white/20 ${t.player}`}>
+                        <div className={`book-container flex justify-center items-center overflow-hidden relative rounded-3xl backdrop-blur-md bg-black/5 shadow-2xl border border-white/20 min-h-[500px] ${t.player}`}>
                             <FlipBook
                                 ref={flipBookRef}
                                 docId={docId}

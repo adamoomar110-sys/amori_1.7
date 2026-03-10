@@ -119,7 +119,7 @@ const FlipBook = forwardRef(({ docId, totalPages, onPageChange, width = 450, hei
                                 <HTMLFlipBook
                                     width={width}
                                     height={height}
-                                    size="stretch"
+                                    size="fixed"
                                     minWidth={200}
                                     maxWidth={1000}
                                     minHeight={300}
