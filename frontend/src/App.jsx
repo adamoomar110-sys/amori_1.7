@@ -300,12 +300,11 @@ function App() {
                 </div>
             </header>
 
-            <div className="p-3 sm:p-8 pt-2 sm:pt-4 max-w-4xl mx-auto">
-                <div className="mb-8 text-center">
-                    <p className={`text-lg transition-colors ${theme === 'default' ? 'text-gray-300' : 'opacity-80'}`}>Transforma tus PDFs en audiolibros con voz neuronal y OCR.</p>
-                </div>
-
-                {!docId ? (<>
+            {!docId ? (
+                <div className="p-3 sm:p-8 pt-2 sm:pt-4 max-w-4xl mx-auto w-full">
+                    <div className="mb-8 text-center">
+                        <p className={`text-lg transition-colors ${theme === 'default' ? 'text-gray-300' : 'opacity-80'}`}>Transforma tus PDFs en audiolibros con voz neuronal y OCR.</p>
+                    </div>
                     <div className={`upload-container backdrop-blur-lg rounded-3xl p-12 text-center shadow-2xl transition-all ${t.card}`}>
                         <input
                             type="file"
@@ -393,8 +392,9 @@ function App() {
                             )}
                         </div>
                     )}
-                </>
-                ) : (
+                </div>
+            ) : (
+                <div className="flex-1 w-full relative">
                     <div className="amori-reader-layout">
                         {/* LEFT COLUMN: SETTINGS */}
                         <div className="settings-panel">
@@ -557,8 +557,8 @@ function App() {
                             />
                         </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
 
             {/* AI Summary Modal */}
             {showSummaryModal && (
