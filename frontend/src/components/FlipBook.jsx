@@ -79,8 +79,8 @@ const FlipBook = forwardRef(({ docId, totalPages, onPageChange, width = 450, hei
                             </button>
                         </div>
 
-                        <TransformComponent wrapperClass="!w-full !h-full flex items-center justify-center" contentClass="flex items-center justify-center">
-                            <div className="py-10">
+                        <TransformComponent wrapperClass="!w-full !h-full flex items-center justify-center" contentClass="!w-full !h-full flex items-center justify-center">
+                            <div className="w-full h-full flex items-center justify-center p-4">
                                 <HTMLFlipBook
                                     width={width}
                                     height={height}
@@ -99,7 +99,7 @@ const FlipBook = forwardRef(({ docId, totalPages, onPageChange, width = 450, hei
                                     onFlip={onFlip}
                                     ref={bookRef}
                                     className="shadow-2xl"
-                                    style={{ margin: "0 auto" }}
+                                    style={{ margin: "auto" }}
                                 >
                                     {/* Generate pages dynamically */}
                                     {Array.from({ length: totalPages }).map((_, index) => (
