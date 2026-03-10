@@ -471,8 +471,8 @@ function App() {
                                 docId={docId}
                                 totalPages={totalPages}
                                 onPageChange={(page) => setCurrentPage(page)}
-                                width={isMobile ? 300 : 450}
-                                height={isMobile ? 420 : 600}
+                                width={isMobile ? 320 : 550}
+                                height={isMobile ? 450 : 750}
                                 layoutMode={layoutMode}
                             />
 
@@ -485,8 +485,8 @@ function App() {
                             </button>
                         </div>
 
-                        {/* RIGHT COLUMN: CIRCULAR CONTROLS */}
-                        <div className="mobile-horizontal-scroll flex flex-col justify-center items-center gap-6">
+                        {/* RIGHT COLUMN: CIRCULAR CONTROLS (NOW FLOATING) */}
+                        <div className="floating-controls">
 
                             <button
                                 onClick={() => {

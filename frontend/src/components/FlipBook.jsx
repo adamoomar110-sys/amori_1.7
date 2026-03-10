@@ -85,10 +85,10 @@ const FlipBook = forwardRef(({ docId, totalPages, onPageChange, width = 450, hei
                                     width={width}
                                     height={height}
                                     size="stretch"
-                                    minWidth={300}
-                                    maxWidth={600}
-                                    minHeight={400}
-                                    maxHeight={800}
+                                    minWidth={200}
+                                    maxWidth={1000}
+                                    minHeight={300}
+                                    maxHeight={1400}
                                     maxShadowOpacity={0.5}
                                     showCover={true}
                                     mobileScrollSupport={true}
