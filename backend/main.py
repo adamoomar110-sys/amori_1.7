@@ -210,30 +210,20 @@ async def get_pages(doc_id: str):
 async def get_voices():
     # Return a curated list of voices for simplicity
     voices = [
-        {"ShortName": "es-AR-TomasNeural", "FriendlyName": "Tomás (Argentina)"},
-        {"ShortName": "es-AR-ElenaNeural", "FriendlyName": "Elena (Argentina)"},
-        {"ShortName": "es-MX-JorgeNeural", "FriendlyName": "Jorge (México)"},
-        {"ShortName": "es-MX-DaliaNeural", "FriendlyName": "Dalia (México)"},
-        {"ShortName": "es-CO-GonzaloNeural", "FriendlyName": "Gonzalo (Colombia)"},
-        {"ShortName": "es-CO-SalomeNeural", "FriendlyName": "Salome (Colombia)"},
-        {"ShortName": "es-ES-AlvaroNeural", "FriendlyName": "Álvaro (España)"},
-        {"ShortName": "es-ES-ElviraNeural", "FriendlyName": "Elvira (España)"},
-        {"ShortName": "es-US-AlonsoNeural", "FriendlyName": "Alonso (EE.UU. Latino)"},
-        {"ShortName": "es-US-PalomaNeural", "FriendlyName": "Paloma (EE.UU. Latino)"},
-        {"ShortName": "es-VE-SebastianNeural", "FriendlyName": "Sebastián (Venezuela)"},
-        {"ShortName": "es-VE-PaolaNeural", "FriendlyName": "Paola (Venezuela)"},
-        {"ShortName": "en-US-GuyNeural", "FriendlyName": "Guy (English US)"},
-        {"ShortName": "en-US-JennyNeural", "FriendlyName": "Jenny (English US)"},
-        {"ShortName": "en-GB-RyanNeural", "FriendlyName": "Ryan (English UK)"},
-        {"ShortName": "en-GB-SoniaNeural", "FriendlyName": "Sonia (English UK)"},
-        {"ShortName": "pt-BR-AntonioNeural", "FriendlyName": "Antônio (Brasil)"},
-        {"ShortName": "pt-BR-FranciscaNeural", "FriendlyName": "Francisca (Brasil)"},
-        {"ShortName": "fr-FR-HenriNeural", "FriendlyName": "Henri (France)"},
-        {"ShortName": "fr-FR-DeniseNeural", "FriendlyName": "Denise (France)"},
-        {"ShortName": "it-IT-DiegoNeural", "FriendlyName": "Diego (Italy)"},
-        {"ShortName": "it-IT-ElsaNeural", "FriendlyName": "Elsa (Italy)"},
-        {"ShortName": "de-DE-ConradNeural", "FriendlyName": "Conrad (Germany)"},
-        {"ShortName": "de-DE-KatjaNeural", "FriendlyName": "Katja (Germany)"},
+        {"ShortName": "es-AR-TomasNeural", "FriendlyName": "Tomás (Argentina - H)"},
+        {"ShortName": "es-AR-ElenaNeural", "FriendlyName": "Elena (Argentina - M)"},
+        {"ShortName": "es-VE-SebastianNeural", "FriendlyName": "Sebastián (Venezuela - H)"},
+        {"ShortName": "es-VE-PaolaNeural", "FriendlyName": "Paola (Venezuela - M)"},
+        {"ShortName": "pt-BR-AntonioNeural", "FriendlyName": "Antônio (Portugués - H)"},
+        {"ShortName": "pt-BR-FranciscaNeural", "FriendlyName": "Francisca (Portugués - M)"},
+        {"ShortName": "en-US-GuyNeural", "FriendlyName": "Guy (Inglés - H)"},
+        {"ShortName": "en-US-JennyNeural", "FriendlyName": "Jenny (Inglés - M)"},
+        {"ShortName": "it-IT-DiegoNeural", "FriendlyName": "Diego (Italiano - H)"},
+        {"ShortName": "it-IT-ElsaNeural", "FriendlyName": "Elsa (Italiano - M)"},
+        {"ShortName": "fr-FR-HenriNeural", "FriendlyName": "Henri (Francés - H)"},
+        {"ShortName": "fr-FR-DeniseNeural", "FriendlyName": "Denise (Francés - M)"},
+        {"ShortName": "de-DE-ConradNeural", "FriendlyName": "Conrad (Alemán - H)"},
+        {"ShortName": "de-DE-KatjaNeural", "FriendlyName": "Katja (Alemán - M)"},
     ]
     return voices
 
@@ -294,20 +284,14 @@ async def get_audio(doc_id: str, page_num: int, voice: str = "es-AR-TomasNeural"
     
     if translate and tts_text.strip():
         try:
+            # Detect target language dynamically from the requested Voice (e.g. "it", "es", "en")
+            target_lang = voice.split('-')[0]
+            
             # Detect source language
             detected_lang = detect(tts_text)
             
-            # Logic: If EN -> ES, If ES -> EN
-            target_lang = None
-            
-            if detected_lang == 'en':
-                target_lang = 'es'
-                target_voice = "es-AR-TomasNeural" # Force Spanish voice
-            elif detected_lang == 'es':
-                target_lang = 'en'
-                target_voice = "en-US-GuyNeural" # Force English voice
-                
-            if target_lang:
+            # Solo traducir si el idioma de origen es diferente al de la voz elegida
+            if detected_lang != target_lang:
                 # Perform translation
                 translator = GoogleTranslator(source='auto', target=target_lang)
                 tts_text = translator.translate(tts_text)
