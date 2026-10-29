@@ -6,6 +6,7 @@ from pydantic import BaseModel
 import shutil
 import os
 import uuid
+import json
 from typing import List
 from services import PDFProcessor, TTSGenerator
 from ai_service import Summarizer
@@ -22,102 +23,116 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-import json
-
-# Global store for demo purposes (should be DB in prod)
-# structure: { doc_id: { "path": str, "pages": [] } }
 documents = {}
 
-UPLOAD_DIR = "uploads"
-AUDIO_DIR = "audio_cache"
-LIBRARY_FILE = "library.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+AUDIO_DIR = os.path.join(BASE_DIR, "audio_cache")
+LIBRARY_FILE = os.path.join(BASE_DIR, "library.json")
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
-print("="*60)
-print(" AMORI BACKEND v1.5 STARTING")
+
+def resolve_pdf_path(raw_path: str, doc_id: str) -> str:
+    """Resuelve la ruta real del PDF aunque provenga de rutas relativas antiguas."""
+    if raw_path:
+        if os.path.isabs(raw_path) and os.path.exists(raw_path):
+            return raw_path
+        norm = raw_path.replace("\\", os.sep).replace("/", os.sep)
+        candidate = os.path.join(BASE_DIR, norm)
+        if os.path.exists(candidate):
+            return candidate
+    fallback = os.path.join(UPLOAD_DIR, f"{doc_id}.pdf")
+    return fallback
+
+
+print("=" * 60)
+print(" AMORI BACKEND v1.7 STARTING")
 print(" AI SUMMARY FEATURE: ENABLED")
-print(f" FRONTEND PATH: {os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist'))}")
-print("="*60)
+print(f" FRONTEND PATH: {os.path.abspath(os.path.join(os.path.dirname(BASE_DIR), 'frontend', 'dist'))}")
+print("=" * 60)
 
 pdf_processor = PDFProcessor()
 tts_generator = TTSGenerator()
 summarizer = Summarizer()
 
+
 def load_library():
     if os.path.exists(LIBRARY_FILE):
-        try:
-            with open(LIBRARY_FILE, "r") as f:
-                return json.load(f)
-        except:
-            return []
+        for enc in ("utf-8", "cp1252", "latin-1"):
+            try:
+                with open(LIBRARY_FILE, "r", encoding=enc) as f:
+                    return json.load(f)
+            except Exception:
+                continue
     return []
+
 
 def save_to_library(book_data):
     library = load_library()
-    # Check if already exists
     for i, book in enumerate(library):
         if book["doc_id"] == book_data["doc_id"]:
-            # Preserve existing progress unless explicitly overwritten
             if "last_page" not in book_data and "last_page" in book:
                 book_data["last_page"] = book["last_page"]
-            library[i] = book_data # Update entry
-            with open(LIBRARY_FILE, "w") as f:
-                json.dump(library, f, indent=2)
+            library[i] = book_data
+            with open(LIBRARY_FILE, "w", encoding="utf-8") as f:
+                json.dump(library, f, indent=2, ensure_ascii=False)
             return
 
-    # New book
     if "last_page" not in book_data:
         book_data["last_page"] = 1
-        
-    library.append(book_data)
-    with open(LIBRARY_FILE, "w") as f:
-        json.dump(library, f, indent=2)
 
-# Load existing documents into memory on startup
+    library.append(book_data)
+    with open(LIBRARY_FILE, "w", encoding="utf-8") as f:
+        json.dump(library, f, indent=2, ensure_ascii=False)
+
+
 startup_library = load_library()
 for book in startup_library:
-    documents[book["doc_id"]] = {
-        "path": book["path"],
+    b_id = book["doc_id"]
+    documents[b_id] = {
+        "path": resolve_pdf_path(book.get("path", ""), b_id),
         "filename": book["filename"],
         "status": "ready",
-        "pages": book.get("pages", []), 
+        "pages": book.get("pages", []),
         "last_page": book.get("last_page", 1)
     }
+
 
 class PageResponse(BaseModel):
     page: int
     text: str
+
 
 class InitResponse(BaseModel):
     doc_id: str
     status: str
     filename: str
 
+
 class ProgressRequest(BaseModel):
     page: int
 
+
 def process_pdf_background(doc_id: str, file_path: str):
     try:
-        # Optimization: Pass file path directly to avoid loading entire file into RAM twice
         pages_data = pdf_processor.process_pdf(file_path)
-        
+
         documents[doc_id]["pages"] = pages_data
         documents[doc_id]["status"] = "ready"
         documents[doc_id]["last_page"] = 1
-        
-        # Save to library
+
+        rel_path = os.path.join("uploads", f"{doc_id}.pdf")
         save_to_library({
             "doc_id": doc_id,
             "filename": documents[doc_id]["filename"],
-            "path": file_path,
+            "path": rel_path,
             "total_pages": len(pages_data),
             "last_page": 1,
-            # saving pages here to persist text content. For optimization, could be separate.
-            "pages": pages_data 
+            "pages": pages_data
         })
-        
+
         print(f"Document {doc_id} processed successfully and saved to library.")
     except Exception as e:
         import traceback
@@ -125,11 +140,16 @@ def process_pdf_background(doc_id: str, file_path: str):
         documents[doc_id]["status"] = "error"
         documents[doc_id]["error"] = str(e)
 
+
 @app.post("/upload", response_model=InitResponse)
 async def upload_pdf(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
-    # Check for duplicates
     for stored_doc_id, doc_data in documents.items():
         if doc_data.get("filename") == file.filename:
+            existing_path = resolve_pdf_path(doc_data.get("path", ""), stored_doc_id)
+            if not os.path.exists(existing_path):
+                with open(existing_path, "wb") as buffer:
+                    shutil.copyfileobj(file.file, buffer)
+                doc_data["path"] = existing_path
             print(f"File {file.filename} already exists. Returning existing doc_id: {stored_doc_id}")
             return {
                 "doc_id": stored_doc_id,
@@ -139,11 +159,10 @@ async def upload_pdf(background_tasks: BackgroundTasks, file: UploadFile = File(
 
     doc_id = str(uuid.uuid4())
     file_path = os.path.join(UPLOAD_DIR, f"{doc_id}.pdf")
-    
+
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-    
-    # Initialize document with processing status
+
     documents[doc_id] = {
         "path": file_path,
         "filename": file.filename,
@@ -151,21 +170,21 @@ async def upload_pdf(background_tasks: BackgroundTasks, file: UploadFile = File(
         "pages": [],
         "last_page": 1
     }
-    
-    # Offload processing
+
     background_tasks.add_task(process_pdf_background, doc_id, file_path)
-    
+
     return {
         "doc_id": doc_id,
         "status": "processing",
         "filename": file.filename
     }
 
+
 @app.get("/document/{doc_id}/status")
 async def get_document_status(doc_id: str):
     if doc_id not in documents:
         raise HTTPException(status_code=404, detail="Document not found")
-    
+
     doc = documents[doc_id]
     return {
         "status": doc["status"],
@@ -174,18 +193,14 @@ async def get_document_status(doc_id: str):
         "last_page": doc.get("last_page", 1)
     }
 
+
 @app.post("/document/{doc_id}/progress")
 async def update_progress(doc_id: str, progress: ProgressRequest):
     if doc_id not in documents:
         raise HTTPException(status_code=404, detail="Document not found")
-    
-    # Update in memory
+
     documents[doc_id]["last_page"] = progress.page
-    
-    # Update in library file (need to load, find, update, save)
-    # Optimization: Only load/save if different to avoid excessive disk I/O?
-    # For now, let's just do it.
-    
+
     library = load_library()
     updated = False
     for book in library:
@@ -193,12 +208,13 @@ async def update_progress(doc_id: str, progress: ProgressRequest):
             book["last_page"] = progress.page
             updated = True
             break
-            
+
     if updated:
-        with open(LIBRARY_FILE, "w") as f:
-            json.dump(library, f, indent=2)
-            
+        with open(LIBRARY_FILE, "w", encoding="utf-8") as f:
+            json.dump(library, f, indent=2, ensure_ascii=False)
+
     return {"status": "success", "page": progress.page}
+
 
 @app.get("/document/{doc_id}/pages")
 async def get_pages(doc_id: str):
@@ -206,10 +222,10 @@ async def get_pages(doc_id: str):
         raise HTTPException(status_code=404, detail="Document not found")
     return documents[doc_id]["pages"]
 
+
 @app.get("/voices")
 async def get_voices():
-    # Return a curated list of voices for simplicity
-    voices = [
+    return [
         {"ShortName": "es-AR-TomasNeural", "FriendlyName": "Tomás (Argentina - H)"},
         {"ShortName": "es-AR-ElenaNeural", "FriendlyName": "Elena (Argentina - M)"},
         {"ShortName": "es-VE-SebastianNeural", "FriendlyName": "Sebastián (Venezuela - H)"},
@@ -225,165 +241,147 @@ async def get_voices():
         {"ShortName": "de-DE-ConradNeural", "FriendlyName": "Conrad (Alemán - H)"},
         {"ShortName": "de-DE-KatjaNeural", "FriendlyName": "Katja (Alemán - M)"},
     ]
-    return voices
+
 
 @app.get("/library")
 async def get_library():
     return load_library()
 
+
 @app.delete("/library/{doc_id}")
 async def delete_book(doc_id: str):
-    global documents 
-    # Load current library
+    global documents
     current_lib = load_library()
-    
-    # Filter out the book to delete
     new_lib = [book for book in current_lib if book.get("doc_id") != doc_id]
-    
+
     if len(new_lib) == len(current_lib):
         raise HTTPException(status_code=404, detail="Book not found")
 
-    # Save updated library
     with open(LIBRARY_FILE, "w", encoding="utf-8") as f:
-        json.dump(new_lib, f, indent=4)
+        json.dump(new_lib, f, indent=4, ensure_ascii=False)
 
-    # Remove from memory documents if present
     if doc_id in documents:
         del documents[doc_id]
 
-    # Remove file
     file_path = os.path.join(UPLOAD_DIR, f"{doc_id}.pdf")
     if os.path.exists(file_path):
         try:
             os.remove(file_path)
         except Exception as e:
             print(f"Error removing file {file_path}: {e}")
-            # We continue anyway to remove it from the library view
-        
+
     return {"status": "success", "message": "Book deleted"}
+
 
 @app.get("/audio/{doc_id}/{page_num}")
 async def get_audio(doc_id: str, page_num: int, voice: str = "es-AR-TomasNeural", translate: bool = False):
     if doc_id not in documents:
         raise HTTPException(status_code=404, detail="Document not found")
-    
+
     pages = documents[doc_id]["pages"]
     if page_num < 1 or page_num > len(pages):
         raise HTTPException(status_code=404, detail="Page not found")
-        
+
     page_data = pages[page_num - 1]
     display_text = page_data["text"]
-    
-    # Process text for TTS (remove newlines, etc.)
-    # We do this here to ensure even old uploaded books get the improved fluidity
     tts_text = pdf_processor.clean_text(display_text)
-    
-    # Handle Translation Logic
+
     is_translated = False
     target_voice = voice
-    
+
     if translate and tts_text.strip():
         try:
-            # Detect target language dynamically from the requested Voice (e.g. "it", "es", "en")
             target_lang = voice.split('-')[0]
-            
-            # Detect source language
             detected_lang = detect(tts_text)
-            
-            # Solo traducir si el idioma de origen es diferente al de la voz elegida
             if detected_lang != target_lang:
-                # Perform translation
                 translator = GoogleTranslator(source='auto', target=target_lang)
                 tts_text = translator.translate(tts_text)
                 is_translated = True
-                print(f"Translated page {page_num} from {detected_lang} to {target_lang}")
         except Exception as e:
             print(f"Translation error: {e}")
-            # Fallback to original text if translation fails
-            pass
 
-    # Include voice, 'smooth' tag, and 'trans' tag to version the cache
     trans_tag = "_trans" if is_translated else ""
     audio_filename = f"{doc_id}_p{page_num}_{target_voice}_smooth{trans_tag}.mp3"
     audio_path = os.path.join(AUDIO_DIR, audio_filename)
-    
+
     if not os.path.exists(audio_path):
+        temp_tts = TTSGenerator(voice=target_voice)
         if not tts_text.strip():
-             # Actually let's generate a silence or a message "No text"
-             # Create a temporary generator for this request
-             temp_tts = TTSGenerator(voice=target_voice)
-             msg = "Sin texto." if target_voice.startswith("es") else "No text."
-             await temp_tts.generate_audio(msg, audio_path)
+            msg = "Sin texto." if target_voice.startswith("es") else "No text."
+            await temp_tts.generate_audio(msg, audio_path)
         else:
-             temp_tts = TTSGenerator(voice=target_voice)
-             await temp_tts.generate_audio(tts_text, audio_path)
-    
+            await temp_tts.generate_audio(tts_text, audio_path)
+
     return FileResponse(audio_path)
 
+
 @app.get("/document/{doc_id}/image/{page_num}")
-async def get_page_image(doc_id: str, page_num: int):
+def get_page_image(doc_id: str, page_num: int):
     if doc_id not in documents:
         raise HTTPException(status_code=404, detail="Document not found")
-    
-    file_path = documents[doc_id]["path"]
-    image_bytes = pdf_processor.get_page_image(file_path, page_num)
-    
+
+    doc = documents[doc_id]
+    file_path = resolve_pdf_path(doc.get("path", ""), doc_id)
+    pages = doc.get("pages", [])
+    fallback_text = pages[page_num - 1]["text"] if 1 <= page_num <= len(pages) else None
+
+    image_bytes = pdf_processor.get_page_image(
+        file_path,
+        page_num,
+        fallback_text=fallback_text,
+        title=doc.get("filename", "")
+    )
+
     if not image_bytes:
         raise HTTPException(status_code=404, detail="Page not found")
-        
-    return Response(content=image_bytes, media_type="image/png")
+
+    return Response(
+        content=image_bytes,
+        media_type="image/png",
+        headers={"Cache-Control": "public, max-age=3600"}
+    )
+
 
 @app.get("/document/{doc_id}/text/{page_num}")
 async def get_page_text(doc_id: str, page_num: int, translate: bool = False, voice: str = "es-AR-TomasNeural"):
     if doc_id not in documents:
         raise HTTPException(status_code=404, detail="Document not found")
-    
+
     pages = documents[doc_id]["pages"]
     if page_num < 1 or page_num > len(pages):
         raise HTTPException(status_code=404, detail="Page not found")
-        
+
     page_data = pages[page_num - 1]
     text = page_data["text"]
-    
+
     if translate and text.strip():
         try:
             target_lang = voice.split('-')[0]
             detected_lang = detect(text)
-            
             if detected_lang != target_lang:
                 translator = GoogleTranslator(source='auto', target=target_lang)
                 text = translator.translate(text)
         except Exception as e:
             print(f"Text translation error: {e}")
-            
+
     return {"text": text}
+
 
 @app.post("/document/{doc_id}/summary")
 async def get_document_summary(doc_id: str):
     if doc_id not in documents:
         raise HTTPException(status_code=404, detail="Document not found")
-    
-    # Check if summary already exists in memory or file?
-    # For now, generate on demand or cache simple in doc object
+
     if "summary" in documents[doc_id] and documents[doc_id]["summary"]:
         return {"summary": documents[doc_id]["summary"]}
 
-    # Collect text from all pages
-    full_text = ""
-    for page in documents[doc_id]["pages"]:
-        full_text += page["text"] + "\n"
-    
+    full_text = "\n".join(p["text"] for p in documents[doc_id]["pages"])
     if len(full_text.strip()) < 50:
         return {"summary": "El documento no tiene suficiente texto para generar un resumen."}
 
     summary = summarizer.generate_summary(full_text)
-    
-    # Save to memory
     documents[doc_id]["summary"] = summary
-    
-    # Save to library?
-    # It would be good to persist it, but for now memory is fine or we can update library.json
-    # Updating library.json
+
     library = load_library()
     updated = False
     for book in library:
@@ -391,35 +389,33 @@ async def get_document_summary(doc_id: str):
             book["summary"] = summary
             updated = True
             break
-    
+
     if updated:
-        with open(LIBRARY_FILE, "w") as f:
-            json.dump(library, f, indent=2)
+        with open(LIBRARY_FILE, "w", encoding="utf-8") as f:
+            json.dump(library, f, indent=2, ensure_ascii=False)
 
     return {"summary": summary}
 
-# --- Static File Serving for React Frontend ---
-# Make sure "frontend/dist" exists (run 'npm run build' first)
-frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
+
+frontend_dist = os.path.join(os.path.dirname(BASE_DIR), "frontend", "dist")
 assets_path = os.path.join(frontend_dist, "assets")
 
 if os.path.exists(assets_path):
     app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
 
+
 @app.get("/{catchall:path}")
 async def serve_react_app(catchall: str):
-    # If the request matches a file in dist (e.g. favicon.ico), serve it
-    if os.path.exists(os.path.join(frontend_dist, catchall)) and catchall != "":
-        return FileResponse(os.path.join(frontend_dist, catchall))
-    
-    # Otherwise, serve index.html for SPA routing
+    target_file = os.path.join(frontend_dist, catchall)
+    if catchall != "" and os.path.isfile(target_file):
+        return FileResponse(target_file)
+
     index_path = os.path.join(frontend_dist, "index.html")
     if os.path.exists(index_path):
         resp = FileResponse(index_path)
         resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         return resp
-    
-    print(f"CRITICAL ERROR: Frontend index.html not found at {index_path}")
+
     return {"error": "Frontend not built. Please run 'npm run build' in frontend directory."}
 
 

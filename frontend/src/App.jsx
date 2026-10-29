@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { uploadPDF, getAudioUrl, getPageImageUrl, getDocStatus, getVoices, getLibrary, deleteBook, updateProgress, getSummary } from './api';
+import { uploadPDF, resolveAudioUrl, prefetchAudio, getDocStatus, getVoices, getLibrary, deleteBook, updateProgress, getSummary } from './api';
 import { Square, Cat, Dog, Leaf, Sparkles, X } from 'lucide-react';
 import './BookStyles.css';
 
@@ -34,6 +34,7 @@ function App() {
     // Save reading progress
     const [totalPages, setTotalPages] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
+    const [bookStartPage, setBookStartPage] = useState(1);
     const [isUploading, setIsUploading] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
     const [playbackRate, setPlaybackRate] = useState(1.0);
@@ -49,6 +50,7 @@ function App() {
     const audioRef = useRef(null);
     const autoAdvanceRef = useRef(false);
     const flipBookRef = useRef(null);
+    const pendingTargetPageRef = useRef(null);
 
     useEffect(() => {
         if (docId && currentPage) {
@@ -71,28 +73,46 @@ function App() {
     }, [playbackRate]);
 
     useEffect(() => {
+        let cancelled = false;
         if (docId && audioRef.current) {
-            audioRef.current.src = getAudioUrl(docId, currentPage, selectedVoice, isTranslated);
-            if (audioRef.current) {
-                audioRef.current.playbackRate = playbackRate;
-            }
+            const shouldAutoPlay = isPlaying || autoAdvanceRef.current;
+            resolveAudioUrl(docId, currentPage, selectedVoice, isTranslated)
+                .then((url) => {
+                    if (cancelled || !audioRef.current) return;
+                    audioRef.current.src = url;
+                    audioRef.current.playbackRate = playbackRate;
 
-            if (isPlaying || autoAdvanceRef.current) {
-                const playPromise = audioRef.current.play();
-                if (playPromise !== undefined) {
-                    playPromise
-                        .then(() => {
-                            setIsPlaying(true);
-                            autoAdvanceRef.current = false;
-                        })
-                        .catch(e => {
-                            console.log("Autoplay prevented/failed", e);
-                            setIsPlaying(false);
-                            autoAdvanceRef.current = false;
-                        });
-                }
-            }
+                    if (shouldAutoPlay) {
+                        const playPromise = audioRef.current.play();
+                        if (playPromise !== undefined) {
+                            playPromise
+                                .then(() => {
+                                    if (!cancelled) {
+                                        setIsPlaying(true);
+                                        autoAdvanceRef.current = false;
+                                    }
+                                })
+                                .catch(e => {
+                                    console.log("Autoplay prevented/failed", e);
+                                    if (!cancelled) {
+                                        setIsPlaying(false);
+                                        autoAdvanceRef.current = false;
+                                    }
+                                });
+                        }
+                    }
+                })
+                .catch(e => {
+                    console.error("Failed to load audio URL", e);
+                    if (!cancelled) {
+                        setIsPlaying(false);
+                        autoAdvanceRef.current = false;
+                    }
+                });
         }
+        return () => {
+            cancelled = true;
+        };
     }, [docId, currentPage, selectedVoice, isTranslated]);
 
     const handleUpload = async (event) => {
@@ -102,21 +122,33 @@ function App() {
         setIsUploading(true);
         try {
             const initData = await uploadPDF(file);
-            const docId = initData.doc_id;
+            const uploadedDocId = initData.doc_id;
+
+            if (initData.status === 'ready' && initData.total_pages) {
+                getLibrary().then(setLibrary).catch(console.error);
+                setDocId(uploadedDocId);
+                setTotalPages(initData.total_pages);
+                setCurrentPage(initData.last_page || 1);
+                setBookStartPage(initData.last_page || 1);
+                setIsUploading(false);
+                return;
+            }
 
             const pollInterval = setInterval(async () => {
                 try {
-                    const statusData = await getDocStatus(docId);
+                    const statusData = await getDocStatus(uploadedDocId);
                     if (statusData.status === 'ready') {
                         clearInterval(pollInterval);
-                        setDocId(docId);
+                        getLibrary().then(setLibrary).catch(console.error);
+                        setDocId(uploadedDocId);
                         setTotalPages(statusData.total_pages);
                         setCurrentPage(statusData.last_page || 1);
+                        setBookStartPage(statusData.last_page || 1);
                         setIsUploading(false);
                     } else if (statusData.status === 'error') {
                         clearInterval(pollInterval);
                         setIsUploading(false);
-                        alert(`Error processing PDF: ${statusData.error}`);
+                        alert(`Error procesando PDF: ${statusData.error}`);
                     }
                 } catch (e) {
                     console.error("Polling error", e);
@@ -126,7 +158,7 @@ function App() {
         } catch (error) {
             console.error("Upload failed", error);
             const msg = error.response?.data?.detail || error.message || "Error desconocido";
-            alert(`Error subiendo archivo: ${msg}. Verifica que el servidor (backend) esté corriendo.`);
+            alert(`Error subiendo archivo: ${msg}`);
             setIsUploading(false);
         }
     };
@@ -135,6 +167,7 @@ function App() {
         setDocId(book.doc_id);
         setTotalPages(book.total_pages || 0);
         setCurrentPage(book.last_page || 1);
+        setBookStartPage(book.last_page || 1);
     };
 
     const handleDeleteBook = async (e, bookId) => {
@@ -175,23 +208,35 @@ function App() {
         }
     };
 
-    const handleAudioEnded = () => {
-        if (currentPage < totalPages) {
+    const advanceToNextPage = (fromAudioEnded = false) => {
+        if (currentPage >= totalPages) {
+            if (fromAudioEnded) setIsPlaying(false);
+            return;
+        }
+        if (fromAudioEnded || isPlaying) {
             autoAdvanceRef.current = true;
-            // Trigger flip via ref
+        }
+        const nextP = currentPage + 1;
+        // En vista doble página ([2|3], [4|5]...), al estar en página par (izquierda) pasamos a la impar (derecha) sin dar vuelta la hoja.
+        if (layoutMode === 'double' && currentPage >= 2 && currentPage % 2 === 0) {
+            setCurrentPage(nextP);
+        } else {
+            pendingTargetPageRef.current = nextP;
+            setCurrentPage(nextP);
             if (flipBookRef.current) {
                 flipBookRef.current.flipNext();
             }
-        } else {
-            setIsPlaying(false);
         }
+    };
+
+    const handleAudioEnded = () => {
+        advanceToNextPage(true);
     };
 
     useEffect(() => {
         if (docId && currentPage < totalPages) {
             const nextPage = currentPage + 1;
-            const nextAudioUrl = getAudioUrl(docId, nextPage, selectedVoice, isTranslated);
-            fetch(nextAudioUrl, { priority: 'low' }).catch(e => console.log("Prefetch harmless error:", e));
+            prefetchAudio(docId, nextPage, selectedVoice, isTranslated);
         }
     }, [docId, currentPage, totalPages, selectedVoice, isTranslated]);
 
@@ -201,8 +246,13 @@ function App() {
     }, [currentPage]);
 
     const handleJump = () => {
-        const val = parseInt(jumpPage);
+        const val = parseInt(jumpPage, 10);
         if (!isNaN(val) && val >= 1 && val <= totalPages) {
+            if (isPlaying) {
+                autoAdvanceRef.current = true;
+            }
+            pendingTargetPageRef.current = val;
+            setCurrentPage(val);
             if (flipBookRef.current) {
                 flipBookRef.current.turnToPage(val);
             }
@@ -211,14 +261,45 @@ function App() {
         }
     };
 
-    const togglePlay = () => {
-        if (audioRef.current) {
-            if (isPlaying) {
-                audioRef.current.pause();
-            } else {
-                audioRef.current.play();
+    const handleFlipPageChange = (spreadFirstPage) => {
+        const target = pendingTargetPageRef.current;
+        if (target !== null) {
+            pendingTargetPageRef.current = null;
+            if (
+                layoutMode === 'double' &&
+                spreadFirstPage >= 2 &&
+                spreadFirstPage % 2 === 0 &&
+                (target === spreadFirstPage || target === spreadFirstPage + 1)
+            ) {
+                setCurrentPage(target);
+                return;
             }
-            setIsPlaying(!isPlaying);
+            if (target === spreadFirstPage) {
+                setCurrentPage(target);
+                return;
+            }
+        }
+        setCurrentPage(spreadFirstPage);
+    };
+
+    const togglePlay = async () => {
+        if (!audioRef.current) return;
+        if (isPlaying) {
+            audioRef.current.pause();
+            setIsPlaying(false);
+        } else {
+            try {
+                if (!audioRef.current.src || audioRef.current.src === window.location.href) {
+                    const url = await resolveAudioUrl(docId, currentPage, selectedVoice, isTranslated);
+                    audioRef.current.src = url;
+                }
+                audioRef.current.playbackRate = playbackRate;
+                await audioRef.current.play();
+                setIsPlaying(true);
+            } catch (err) {
+                console.error("Play failed:", err);
+                setIsPlaying(false);
+            }
         }
     };
 
@@ -245,7 +326,11 @@ function App() {
                     <div className="flex items-center gap-4">
                         {docId && (
                             <button
-                                onClick={() => setDocId(null)}
+                                onClick={() => {
+                                    handleStop();
+                                    setDocId(null);
+                                    getLibrary().then(setLibrary).catch(console.error);
+                                }}
                                 title="Volver a la biblioteca"
                                 className={`p-2 rounded-full transition-colors ${t.buttonSecondary}`}
                             >
@@ -458,7 +543,41 @@ function App() {
                                         IR
                                     </button>
                                 </div>
-                                <div className="text-center mt-2 text-xs text-gray-500">Página {currentPage} de {totalPages}</div>
+                                <div className="text-center mt-2 text-xs text-gray-500 font-medium">Página {currentPage} de {totalPages}</div>
+                                {layoutMode === 'double' && currentPage >= 2 && (
+                                    <div className="flex gap-1.5 mt-2">
+                                        {(() => {
+                                            const leftP = currentPage % 2 === 0 ? currentPage : currentPage - 1;
+                                            const rightP = leftP + 1;
+                                            return (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (isPlaying) autoAdvanceRef.current = true;
+                                                            setCurrentPage(leftP);
+                                                        }}
+                                                        className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold border transition-all ${currentPage === leftP ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white/60 text-gray-700 hover:bg-white'}`}
+                                                    >
+                                                        Izq ({leftP})
+                                                    </button>
+                                                    {rightP <= totalPages && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (isPlaying) autoAdvanceRef.current = true;
+                                                                setCurrentPage(rightP);
+                                                            }}
+                                                            className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold border transition-all ${currentPage === rightP ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white/60 text-gray-700 hover:bg-white'}`}
+                                                        >
+                                                            Der ({rightP})
+                                                        </button>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
                             </div>
 
                             <button
@@ -476,16 +595,21 @@ function App() {
                                 ref={flipBookRef}
                                 docId={docId}
                                 totalPages={totalPages}
-                                onPageChange={(page) => setCurrentPage(page)}
-                                width={isMobile ? 320 : 550}
-                                height={isMobile ? 450 : 750}
+                                currentPage={currentPage}
+                                initialPage={bookStartPage}
+                                onPageChange={handleFlipPageChange}
+                                width={isMobile ? 310 : (layoutMode === 'double' ? 395 : 480)}
+                                height={isMobile ? 440 : (layoutMode === 'double' ? 560 : 680)}
                                 layoutMode={layoutMode}
                                 isTranslated={isTranslated}
                                 voice={selectedVoice}
                             />
 
                             <button
-                                onClick={() => setLayoutMode(m => m === 'single' ? 'double' : 'single')}
+                                onClick={() => {
+                                    setBookStartPage(currentPage);
+                                    setLayoutMode(m => m === 'single' ? 'double' : 'single');
+                                }}
                                 className="absolute top-4 right-4 p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md text-gray-600 hover:text-black transition-colors z-50 text-xs font-bold"
                                 title="Cambiar Vista (1 o 2 Páginas)"
                             >
@@ -499,6 +623,8 @@ function App() {
                             <button
                                 onClick={() => {
                                     handleStop();
+                                    pendingTargetPageRef.current = 1;
+                                    setCurrentPage(1);
                                     if (flipBookRef.current) flipBookRef.current.turnToPage(1);
                                 }}
                                 className="side-control-btn"
@@ -536,9 +662,7 @@ function App() {
                             </button>
 
                             <button
-                                onClick={() => {
-                                    if (flipBookRef.current) flipBookRef.current.flipNext();
-                                }}
+                                onClick={() => advanceToNextPage(false)}
                                 disabled={currentPage === totalPages}
                                 className="side-control-btn disabled:opacity-30 disabled:cursor-not-allowed"
                                 title="Siguiente Página"
@@ -625,7 +749,7 @@ function App() {
             )}
 
             <footer className="w-full text-center p-4 mt-auto text-xs opacity-60">
-                <p>Amori v1.7.1 &copy; {new Date().getFullYear()} Adamo. All rights reserved.</p>
+                <p>Amori v1.7.1 &copy; {new Date().getFullYear()} Aura &middot; Omar Horacio Adamo. Todos los derechos reservados.</p>
             </footer>
         </div >
     )

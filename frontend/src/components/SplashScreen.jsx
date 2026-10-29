@@ -5,7 +5,7 @@ const SplashScreen = ({ onComplete }) => {
     const [isFadingOut, setIsFadingOut] = useState(false);
 
     useEffect(() => {
-        // Star fade out sequence slightly before unmounting
+        // Start fade out sequence slightly before unmounting
         const fadeTimer = setTimeout(() => {
             setIsFadingOut(true);
         }, 5000); // 5 seconds of animation
@@ -24,7 +24,11 @@ const SplashScreen = ({ onComplete }) => {
     const letters = ['A', 'M', 'O', 'R', 'I'];
 
     return (
-        <div className={`splash-container ${isFadingOut ? 'fade-out-splash' : ''}`}>
+        <div
+            className={`splash-container notranslate ${isFadingOut ? 'fade-out-splash' : ''}`}
+            translate="no"
+            aria-label="Amori"
+        >
             <div className="bookshelf">
                 {letters.map((letter, index) => (
                     <div key={index} className="book-wrapper">
@@ -37,6 +41,7 @@ const SplashScreen = ({ onComplete }) => {
                 ))}
             </div>
             <div className="welcome-text">Iniciando experiencia</div>
+            <div className="splash-brand">© {new Date().getFullYear()} Aura · Omar Horacio Adamo</div>
         </div>
     );
 };

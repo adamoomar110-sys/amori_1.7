@@ -1,5 +1,3 @@
-// import { Square, Cat, Dog, Leaf } from 'lucide-react';
-
 export const themes = {
     default: {
         id: 'default',
@@ -42,8 +40,8 @@ export const themes = {
         ringColor: "ring-pink-300",
         activeBg: "bg-pink-100",
         iconFill: "fill-none",
-        customIcon: "/kitten-fan.png",
-        backgroundImage: "/kitten-fan.png",
+        customIcon: "./kitten-fan.png",
+        backgroundImage: "./kitten-fan.png",
         bgRepeat: true
     },
     puppy: {
@@ -66,15 +64,15 @@ export const themes = {
         ringColor: "ring-amber-300",
         activeBg: "bg-amber-100",
         iconFill: "fill-none",
-        customIcon: "/kitten-cowboy.png",
-        backgroundImage: "/kitten-cowboy.png",
+        customIcon: "./kitten-cowboy.png",
+        backgroundImage: "./kitten-cowboy.png",
         bgRepeat: true
     },
     nature: {
         id: 'nature',
         label: 'Naturaleza',
         icon: 'leaf',
-        bg: "bg-gradient-to-br from-emerald-400 via-green-500 to-teal-400 text-white", // More vibrant green
+        bg: "bg-gradient-to-br from-emerald-400 via-green-500 to-teal-400 text-white",
         header: "bg-emerald-900/20 border-emerald-200/50 shadow-sm",
         headerText: "text-emerald-950",
         card: "bg-white/40 border-emerald-200 hover:bg-white/60 text-emerald-900 shadow-sm",

@@ -1,7 +1,7 @@
 .splash-container {
     position: fixed;
     inset: 0;
-    background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f1a 100%);
+    background: radial-gradient(circle at center, #1e1b38 0%, #0f0f1a 100%);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -14,224 +14,251 @@
 
 .bookshelf {
     display: flex;
-    gap: 30px;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(14px, 2.4vw, 30px);
     perspective: 1500px;
-    margin-bottom: 50px;
+    margin-bottom: 44px;
+    padding: 0 20px;
 }
 
 .book-wrapper {
     position: relative;
-    width: 60px;
-    height: 200px;
+    width: clamp(108px, 12vw, 146px);
+    height: clamp(156px, 17.5vw, 204px);
     transform-style: preserve-3d;
-    transform: rotateY(-30deg);
-    animation: openBook 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    animation: openBook 0.85s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
     opacity: 0;
 }
 
 /* Individual Book Delays */
 .book-wrapper:nth-child(1) {
-    animation-delay: 0.5s;
+    animation-delay: 0.2s;
 }
 
 .book-wrapper:nth-child(2) {
-    animation-delay: 1.2s;
+    animation-delay: 0.75s;
 }
 
 .book-wrapper:nth-child(3) {
-    animation-delay: 1.9s;
+    animation-delay: 1.3s;
 }
 
 .book-wrapper:nth-child(4) {
-    animation-delay: 2.6s;
+    animation-delay: 1.85s;
 }
 
 .book-wrapper:nth-child(5) {
-    animation-delay: 3.3s;
+    animation-delay: 2.4s;
 }
 
 /* The Book Structure */
 .book-spine {
     position: absolute;
-    width: 30px;
+    left: 0;
+    top: 0;
+    width: 15px;
     height: 100%;
-    background: linear-gradient(to right, #4a154b, #2a082b);
-    transform: rotateY(-90deg) translateZ(15px);
-    transform-origin: left;
-    border-radius: 4px 0 0 4px;
+    transform: translateZ(1px);
+    background: linear-gradient(to right, #3b0d45 0%, #7e22ce 50%, #4c1d95 100%);
+    border-radius: 5px 0 0 5px;
+    z-index: 3;
+    box-shadow:
+        inset 2px 0 4px rgba(255, 255, 255, 0.25),
+        -3px 6px 14px rgba(0, 0, 0, 0.45);
+}
+
+.book-pages {
+    position: absolute;
+    left: 13px;
+    right: 0;
+    height: 96%;
+    top: 2%;
+    transform: translateZ(0px);
+    background: linear-gradient(to right, #e9e4d8 0%, #fdfbf7 15%, #ffffff 72%, #f3efe6 100%);
+    border-radius: 0 6px 6px 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: inset 2px 0 5px rgba(255, 255, 255, 0.2);
+    z-index: 2;
+    box-shadow:
+        inset 7px 0 12px rgba(0, 0, 0, 0.12),
+        3px 3px 0 #d8d2c5,
+        6px 8px 20px rgba(0, 0, 0, 0.5);
 }
 
 .book-cover {
     position: absolute;
-    width: 140px;
+    left: 10px;
+    right: -2px;
+    top: 0;
     height: 100%;
-    background: linear-gradient(135deg, #6b21a8, #4c1d95);
-    transform-origin: left;
-    transform: translateZ(15px);
+    background: linear-gradient(135deg, #7e22ce 0%, #4c1d95 100%);
+    transform-origin: left center;
+    transform: translateZ(4px) rotateY(0deg);
     border-radius: 0 8px 8px 0;
-    box-shadow: 5px 5px 20px rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 5;
+    box-shadow: 5px 6px 20px rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.14);
     border-left: none;
+    backface-visibility: visible;
 }
 
 .book-cover::after {
     content: '';
     position: absolute;
-    top: 5px;
-    bottom: 5px;
-    right: 5px;
-    left: 15px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 0 4px 4px 0;
-}
-
-.book-pages {
-    position: absolute;
-    width: 135px;
-    height: 96%;
-    top: 2%;
-    background: linear-gradient(to right, #f8f9fa, #e9ecef);
-    transform-origin: left;
-    transform: translateZ(-10px);
-    border-radius: 0 4px 4px 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: inset -5px 0 10px rgba(0, 0, 0, 0.1);
+    top: 7px;
+    bottom: 7px;
+    right: 7px;
+    left: 12px;
+    border: 1px solid rgba(233, 213, 255, 0.32);
+    border-radius: 0 5px 5px 0;
 }
 
 /* The Glowing Letter inside the pages */
 .book-letter {
-    font-size: 5rem;
-    font-weight: bold;
+    font-size: clamp(3.3rem, 5vw, 4.8rem);
+    font-weight: 800;
+    line-height: 1;
     color: transparent;
-    background: linear-gradient(45deg, #8b5cf6, #d946ef);
+    background: linear-gradient(135deg, #5b21b6 0%, #9333ea 52%, #db2777 100%);
     -webkit-background-clip: text;
     background-clip: text;
     opacity: 0;
     transform: scale(0.5);
-    animation: glowLetter 1s ease-out forwards;
-    text-shadow: 0 0 20px rgba(217, 70, 239, 0.5);
+    animation: glowLetter 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    filter: drop-shadow(0 4px 10px rgba(147, 51, 234, 0.35));
+    user-select: none;
 }
 
-/* Delay letters to appear after the book opens */
+/* Delay letters to appear right as each book opens */
 .book-wrapper:nth-child(1) .book-letter {
-    animation-delay: 1.0s;
+    animation-delay: 0.6s;
 }
 
 .book-wrapper:nth-child(2) .book-letter {
-    animation-delay: 1.7s;
+    animation-delay: 1.15s;
 }
 
 .book-wrapper:nth-child(3) .book-letter {
-    animation-delay: 2.4s;
+    animation-delay: 1.7s;
 }
 
 .book-wrapper:nth-child(4) .book-letter {
-    animation-delay: 3.1s;
+    animation-delay: 2.25s;
 }
 
 .book-wrapper:nth-child(5) .book-letter {
-    animation-delay: 3.8s;
+    animation-delay: 2.8s;
 }
 
 /* Global Animations */
 @keyframes openBook {
     0% {
         opacity: 0;
-        transform: rotateY(-80deg) translateZ(-100px) rotateX(10deg);
+        transform: rotateY(-55deg) translateY(14px) scale(0.92);
     }
 
-    30% {
+    45% {
         opacity: 1;
-        transform: rotateY(-30deg) translateZ(0) rotateX(0deg);
+        transform: rotateY(-18deg) translateY(0) scale(1);
     }
 
     100% {
         opacity: 1;
-        transform: rotateY(0deg) translateZ(0) rotateX(0deg);
-        /* Widening the container so we can see inside */
-        width: 150px;
+        transform: rotateY(0deg) translateY(0) scale(1);
     }
 }
 
-/* We animate the cover to swing open */
-
+/* Cover swings open in 3D without overlapping neighboring letters, then dissolves cleanly */
 @keyframes swingCover {
     0% {
-        transform: translateZ(15px) rotateY(0deg);
+        transform: translateZ(4px) rotateY(0deg);
+        opacity: 1;
+    }
+
+    55% {
+        transform: translateZ(4px) rotateY(-92deg);
+        opacity: 0.92;
     }
 
     100% {
-        transform: translateZ(15px) rotateY(-140deg);
-        box-shadow: -5px 5px 20px rgba(0, 0, 0, 0.5);
+        transform: translateZ(4px) rotateY(-112deg);
+        opacity: 0;
+        pointer-events: none;
     }
 }
 
 .book-wrapper:nth-child(1) .book-cover {
-    animation: swingCover 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-    animation-delay: 0.8s;
+    animation: swingCover 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation-delay: 0.45s;
 }
 
 .book-wrapper:nth-child(2) .book-cover {
-    animation: swingCover 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-    animation-delay: 1.5s;
+    animation: swingCover 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation-delay: 1.0s;
 }
 
 .book-wrapper:nth-child(3) .book-cover {
-    animation: swingCover 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-    animation-delay: 2.2s;
+    animation: swingCover 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation-delay: 1.55s;
 }
 
 .book-wrapper:nth-child(4) .book-cover {
-    animation: swingCover 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-    animation-delay: 2.9s;
+    animation: swingCover 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation-delay: 2.1s;
 }
 
 .book-wrapper:nth-child(5) .book-cover {
-    animation: swingCover 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-    animation-delay: 3.6s;
+    animation: swingCover 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation-delay: 2.65s;
 }
 
 @keyframes glowLetter {
     0% {
         opacity: 0;
-        transform: scale(0.5) translateZ(5px);
+        transform: scale(0.5);
     }
 
-    50% {
+    60% {
         opacity: 1;
-        transform: scale(1.1) translateZ(10px);
-        text-shadow: 0 0 30px rgba(217, 70, 239, 0.8);
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 18px rgba(217, 70, 239, 0.65));
     }
 
     100% {
         opacity: 1;
-        transform: scale(1) translateZ(5px);
-        text-shadow: 0 0 15px rgba(217, 70, 239, 0.5);
+        transform: scale(1);
+        filter: drop-shadow(0 4px 10px rgba(147, 51, 234, 0.35));
     }
 }
 
 .welcome-text {
-    margin-top: 40px;
-    font-size: 1.5rem;
-    letter-spacing: 5px;
+    margin-top: 16px;
+    font-size: clamp(1.05rem, 1.8vw, 1.4rem);
+    letter-spacing: 6px;
     text-transform: uppercase;
     opacity: 0;
-    color: #a78bfa;
-    animation: fadeInText 1.5s ease-in forwards;
-    animation-delay: 4.5s;
-    /* Appears after all books are open */
+    color: #c4b5fd;
+    animation: fadeInText 0.9s ease-out forwards;
+    animation-delay: 3.2s;
+}
+
+.splash-brand {
+    position: absolute;
+    bottom: 24px;
+    font-size: 0.78rem;
+    letter-spacing: 1.5px;
+    color: rgba(196, 181, 253, 0.55);
+    opacity: 0;
+    animation: fadeInText 0.9s ease-out forwards;
+    animation-delay: 3.4s;
 }
 
 @keyframes fadeInText {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(14px);
     }
 
     to {
